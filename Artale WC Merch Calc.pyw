@@ -176,7 +176,7 @@ class MerchantCalculator(QMainWindow):
         
     def init_ui(self):
         self.setWindowTitle('Artale WC Merch Calc v5 - made by Orin#MLQhB')
-        self.setMinimumSize(1000, 600)
+        self.setMinimumSize(400, 400)
         
         # Main widget and layout
         main_widget = QWidget()
@@ -226,7 +226,7 @@ class MerchantCalculator(QMainWindow):
         # Profit threshold input
         profit_widget = QWidget()
         profit_layout = QHBoxLayout(profit_widget)
-        profit_layout.addWidget(QLabel("Desired Profit %:"))
+        profit_layout.addWidget(QLabel("Desired Profit %"))
         self.profit_input = QLineEdit()
         self.profit_input.setPlaceholderText("10")
         profit_layout.addWidget(self.profit_input)
@@ -272,11 +272,12 @@ class MerchantCalculator(QMainWindow):
         layout.addWidget(controls_frame)
 
         # Settings area
-        settings = QWidget()
-        settings_layout = QVBoxLayout(settings)
+        settings_frame = QFrame()
+        settings_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        settings_layout = QVBoxLayout(settings_frame)
 
-        # Theme and scale sliders
-        sliders_layout = QHBoxLayout()
+        # Theme, Scale, and Font controls in one row
+        sliders_font_layout = QHBoxLayout()
         self.theme_slider = QSlider(Qt.Orientation.Horizontal)
         self.theme_slider.setMinimum(0)
         self.theme_slider.setMaximum(100)
@@ -289,22 +290,24 @@ class MerchantCalculator(QMainWindow):
         self.scale_slider.setValue(100)  # Default font scale
         self.scale_slider.valueChanged.connect(self.update_scale)
 
-        sliders_layout.addWidget(QLabel("Theme"))
-        sliders_layout.addWidget(self.theme_slider)
-        sliders_layout.addWidget(QLabel("Scale"))
-        sliders_layout.addWidget(self.scale_slider)
-        layout.addLayout(sliders_layout)
+        sliders_font_layout.addWidget(QLabel("Theme"))
+        sliders_font_layout.addWidget(self.theme_slider)
+        sliders_font_layout.addWidget(QLabel("Scale"))
+        sliders_font_layout.addWidget(self.scale_slider)
 
         # Font selector
         font_widget = QWidget()
         font_layout = QHBoxLayout(font_widget)
-        font_layout.addWidget(QLabel("Font:"))
         self.font_combo = QFontComboBox()
         self.font_combo.currentFontChanged.connect(self.update_font)
         font_layout.addWidget(self.font_combo, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        sliders_font_layout.addWidget(self.font_combo)
+
+        settings_layout.addLayout(sliders_font_layout)
         settings_layout.addWidget(font_widget)
 
-        layout.addWidget(settings)
+        layout.addWidget(settings_frame)
 
         # Changelog button
         changelog_button = QPushButton("Changelog")
