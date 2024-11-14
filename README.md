@@ -58,8 +58,11 @@ This script provides the following features:
 
 The following features are planned for future updates to the Artale-WC-Merch-Calc:
 
-- [ ] **.exe Release**  
+- [x] **.exe Release**  
   Package the script into an executable for easy use on Windows.
+
+- [ ] **.exe false anti virus??**  
+  Somehow when downloading it says the .exe is a virus? Try to fix this within the python code
 
 - [ ] **Custom Tag Colours**  
   Personalized tag colours for the interface.
