@@ -222,8 +222,10 @@ class ChangelogDialog(QDialog):
         self.setWindowTitle("Changelog")
         
         layout = QVBoxLayout(self)
-        changelog_text = QLabel("""
-                2024.11.14 v2
+        changelog_text = QLabel(
+            """
+                2024.11.14 v3
+                    - Made the script extract data succesfully for making a working executable
                     - Fixed issue with undefined 'scale_layout' attribute in Settings dialog.
                     - Added functionality to save AH prices after calculation for persistence across restarts.
                     - Improved settings dialog handling, allowing for more dynamic adjustments.
@@ -772,8 +774,13 @@ class MerchantCalculator(QMainWindow):
         self.load_settings()
 
     def get_version_from_file_timestamp(self):
-        script_name = "Artale WC Merch Calc.pyw"  # Ensure the correct extension is used
-        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_name)
+        if getattr(sys, 'frozen', False):
+            # If running as a bundled .exe, use _MEIPASS to get the path to the bundled resources
+            script_path = os.path.join(sys._MEIPASS, "Artale WC Merch Calc.pyw")
+        else:
+            # If running as a normal script, use the current working directory
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Artale WC Merch Calc.pyw")
+    
         try:
             last_modified_time = os.path.getmtime(script_path)
             timestamp = time.localtime(last_modified_time)
