@@ -221,37 +221,32 @@ class ChangelogDialog(QDialog):
         self.setWindowTitle("Changelog")
         
         layout = QVBoxLayout(self)
-        changelog_text = QLabel([changelog]
-                                ("""
-                                 2024.11.14 v2
-                                    - Fixed issue with undefined 'scale_layout' attribute in Settings dialog.
-                                    - Added functionality to save AH prices after calculation for persistence across restarts.
-                                    - Improved settings dialog handling, allowing for more dynamic adjustments.
-                                    - Fixed light theme text color issue on 'Contact' button, ensuring consistent color with other elements.
+        changelog_text = QLabel("""
+                2024.11.14 v2
+                    - Fixed issue with undefined 'scale_layout' attribute in Settings dialog.
+                    - Added functionality to save AH prices after calculation for persistence across restarts.
+                    - Improved settings dialog handling, allowing for more dynamic adjustments.
+                    - Fixed light theme text color issue on 'Contact' button, ensuring consistent color with other elements.
 		
-                                 2024.11.14
-                                    - Enhanced UI layout with neatly aligned result headers and item information.
-                                    - Dynamically sized columns with custom scaling in `update_scale()`.
-                                    - Improved `calculate()` to display profit results in bold, with strikethrough for negative profits.
-                                    - Updated styling for button colors and text to better match theme settings.
-                                    - Modified result display to bold and strikethrough selectively for negative profits.
-                                    - Reorganized controls for streamlined 'Calculate' section layout and positioning of the changelog button.
-                                    - Fixed issue with undefined 'scale_layout' attribute in Settings dialog.
-                                    - Added functionality to save AH prices after calculation for persistence across restarts.
-                                    - Improved settings dialog handling, allowing for more dynamic adjustments.
-                                    - Fixed light theme text color issue on 'Contact' button, ensuring consistent color with other elements.
+                2024.11.14
+                    - Enhanced UI layout with neatly aligned result headers and item information.
+                    - Dynamically sized columns with custom scaling in `update_scale()`.
+                    - Improved `calculate()` to display profit results in bold, with strikethrough for negative profits.
+                    - Updated styling for button colors and text to better match theme settings.
+                    - Modified result display to bold and strikethrough selectively for negative profits.
+                    - Reorganized controls for streamlined 'Calculate' section layout and positioning of the changelog button.
         
-                                        2024.11.13                       
-                                    - Added changelog button and information.
-                                    - Added a header with creator information (GitHub, Discord, etc.).
+                2024.11.13                       
+                    - Added changelog button and information.
+                    - Added a header with creator information (GitHub, Discord, etc.).
         
-                                        2024.11.12
-                                    - Introduced theme and scale sliders for better customization.
-                                    - Added font choice option for improved user experience.
+                2024.11.12
+                    - Introduced theme and scale sliders for better customization.
+                    - Added font choice option for improved user experience.
         
-                                        2024.11.11
-                                    - Created initial script with basic item calculation functionality.""")
-                                    )
+                2024.11.11
+                    - Created initial script with basic item calculation functionality.
+                    """)
         layout.addWidget(changelog_text)
         
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
