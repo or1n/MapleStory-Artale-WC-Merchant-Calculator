@@ -64,6 +64,12 @@ The following features are planned for future updates to the Artale-WC-Merch-Cal
 - [ ] **.exe false anti virus??**  
   Somehow when downloading it says the .exe is a virus? Try to fix this within the python code
 
+- [ ] **WC price packages**  
+  Add a dialog with all the packages and prices with icons
+
+- [ ] **WC calculator**  
+  At the WC price dialog I can click on packages and add a list for total WC and mesos at the given rate
+
 - [ ] **Custom Tag Colours**  
   Personalized tag colours for the interface.
 
