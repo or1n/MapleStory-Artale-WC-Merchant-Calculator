@@ -71,6 +71,16 @@ from typing import List
 # For theme detection
 import darkdetect
 
+# Function to get the absolute path to the resource
+def resource_path(relative_path):
+    try:
+        # PyInstaller sets _MEIPASS when running from the bundled .exe
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath('.'))
+        return os.path.join(base_path, relative_path)
+    except Exception:
+        # If not running from the bundle, return the relative path
+        return os.path.join(os.path.abspath('.'), relative_path)
+
 @dataclass
 class Item:
     name: str
@@ -99,15 +109,6 @@ class ItemResult:
         net = (self.ah_price - 1) * 0.95
         max_cost = net / (1 + desired_profit_percent / 100)
         return int(max_cost / self.item.unit_wc_cost)
-    
-def get_version_from_file_timestamp(file_path):
-    # Get the last modified time in seconds since the epoch
-    last_modified_time = os.path.getmtime(file_path)
-    # Convert to a struct_time object
-    timestamp = time.localtime(last_modified_time)
-    # Format as vAA.BB.CC@DD.EE.FF
-    version = time.strftime("v%Y.%m.%d", timestamp)
-    return version
 
 class DarkLightPalette:
     def __init__(self):
@@ -487,7 +488,7 @@ class SettingsDialog(QDialog):
         dialog_x = parent_geometry.x() + (parent_geometry.width() - dialog_width) // 2
         dialog_y = parent_geometry.y() + (parent_geometry.height() - dialog_height) // 2
         self.move(dialog_x, dialog_y)
-
+    
 class MerchantCalculator(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -610,8 +611,8 @@ class MerchantCalculator(QMainWindow):
         # Set the size policy for MerchantCalculator to be dynamically resizable
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
-        file_path = __file__  # This refers to the current script file
-        version = get_version_from_file_timestamp(file_path)
+        version, last_modified_time, timestamp = self.get_version_from_file_timestamp()
+        print(f"Version: {version}, Last Modified: {last_modified_time}, Timestamp: {timestamp}")
 
         self.setWindowTitle(f'Artale WC Merch Calc {version} - made by Orin#MLQhB')
         
@@ -623,8 +624,9 @@ class MerchantCalculator(QMainWindow):
         # Header with links
         header_widget = QWidget()
         header_layout = QVBoxLayout(header_widget)
-        
-        avatar_image = QPixmap("avatar.png") #Load the avatar image
+
+        # Load avatar image from the "images" folder using the resource_path
+        avatar_image = QPixmap(resource_path("images/avatar.png"))
         avatar_label = QLabel()
         avatar_label.setPixmap(avatar_image)
         avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -769,6 +771,18 @@ class MerchantCalculator(QMainWindow):
 
         self.load_settings()
 
+    def get_version_from_file_timestamp(self):
+        script_name = "Artale WC Merch Calc.pyw"  # Ensure the correct extension is used
+        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_name)
+        try:
+            last_modified_time = os.path.getmtime(script_path)
+            timestamp = time.localtime(last_modified_time)
+            version = time.strftime("v%Y.%m.%d", timestamp)
+            return version, last_modified_time, timestamp
+        except Exception as e:
+            print(f"Error: {e}")
+            return None, None, None
+
     def update_main_window_scale(self, scale_value):
         """Update main window scale dynamically based on scale slider."""
         scale_factor = scale_value / 100.0
@@ -792,7 +806,7 @@ class MerchantCalculator(QMainWindow):
         # Update UI (force refresh to apply the new sizes properly)
         self.update()  # Refresh the window layout to reflect changes
         self.adjustSize()  # Recalculate size based on content
-
+ 
     def calculate(self):
         # Clear any existing result widgets
         for i in reversed(range(self.results_layout.count())):
@@ -917,10 +931,15 @@ class MerchantCalculator(QMainWindow):
         changelog_dialog.exec() # Show the dialog modally
 
 def main():
+    # Ensure QApplication is created first
     app = QApplication(sys.argv)
+    
+    # Initialize the main window
     calculator = MerchantCalculator()
     calculator.show()
+    
+    # Start the event loop
     sys.exit(app.exec())
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
