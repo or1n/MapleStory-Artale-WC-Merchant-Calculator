@@ -1,6 +1,6 @@
 """
 Artale WC Merch Calculator
-Version: v5
+Version: v24.11.13@2352
 Author: Orin
 
 GitHub: https://github.com/or1n
@@ -15,7 +15,7 @@ It calculates the expected net profit after factoring in the auction house fees 
 displays the results in a sorted, easy-to-read format. 
 """
 
-import sys
+import sys, os, time
 
 # PyQt6 Imports
 from PyQt6.QtWidgets import (
@@ -33,12 +33,16 @@ from PyQt6.QtWidgets import (
     QFrame,
     QScrollArea,
     QSlider,
-    QFontComboBox
+    QFontComboBox,
+    QSizePolicy,
+    QGroupBox,
+    QSpacerItem
 )
 
 from PyQt6.QtCore import (
     Qt,
-    QUrl
+    QUrl,
+    QRect
 )
 
 from PyQt6.QtGui import (
@@ -48,7 +52,10 @@ from PyQt6.QtGui import (
     QPalette,
     QColor,
     QDesktopServices,
-    QPixmap
+    QPixmap,
+    QGuiApplication,
+    QPainter,
+    QPen
 )
 
 # For network requests and downloading images
@@ -62,7 +69,6 @@ from typing import List
 
 # For theme detection
 import darkdetect
-
 
 @dataclass
 class Item:
@@ -92,19 +98,61 @@ class ItemResult:
         net = (self.ah_price - 1) * 0.95
         max_cost = net / (1 + desired_profit_percent / 100)
         return int(max_cost / self.item.unit_wc_cost)
+    
+def get_version_from_file_timestamp(file_path):
+    # Get the last modified time in seconds since the epoch
+    last_modified_time = os.path.getmtime(file_path)
+    # Convert to a struct_time object
+    timestamp = time.localtime(last_modified_time)
+    # Format as vAA.BB.CC@DD.EE.FF
+    version = time.strftime("v%Y.%m.%d", timestamp)
+    return version
+
+def get_version_from_file_timestamp(file_path):
+    last_modified_time = os.path.getmtime(file_path)
+    timestamp = time.localtime(last_modified_time)
+    version = time.strftime("v%Y.%m.%d", timestamp)
+    return version
 
 class ClickableLabel(QLabel):
     def __init__(self, text, url, parent=None):
         super().__init__(text, parent)
         self.url = url
+        
+        # Set the font to be bold and underlined
+        font = self.font()
+        font.setBold(True)  # Make text bold
+        font.setUnderline(True)  # Underline the text correctly
+        self.setFont(font)
+
+        # Make the label clickable
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet("color: #0078D7; text-decoration: underline;")
 
     def mousePressEvent(self, event):
+        # Open the URL when clicked
         QDesktopServices.openUrl(QUrl(self.url))
 
+class Boldy(QLabel):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        
+        # Set the font to be bold and underlined
+        font = self.font()
+        font.setBold(True)  # Make text bold
+        self.setFont(font)
+        
+class BoldButton(QPushButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        
+        # Set the font to be bold
+        font = self.font()
+        font.setBold(True)  # Make text bold
+        self.setFont(font)  # Apply the bold font to the button's text
+        
 class DarkLightPalette:
     def __init__(self):
+        # Define light and dark palettes with more colors
         self.light = {
             'window': '#FFFFFF',
             'text': '#000000',
@@ -114,39 +162,119 @@ class DarkLightPalette:
             'loss': '#FF0000'
         }
         self.dark = {
-            'window': '#2D2D2D',
+            'window': '#1e1e1e',
             'text': '#FFFFFF',
-            'button': '#404040',
+            'button': '#3c3c3c',
             'input': '#3D3D3D',
             'profit': '#00FF00',
             'loss': '#FF4040'
         }
 
+class ThemedButton(QPushButton):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        
+        # Set the text color dynamically based on the theme (adjust this to your theme)
+        if self.isEnabled():
+            theme_color = self.palette().color(self.foregroundRole())  # Adjust based on the theme's color
+            self.setStyleSheet(f"color: {theme_color.name()};")
+
+class CustomLineEdit(QLineEdit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def paintEvent(self, event):
+        # Only call the default paintEvent, don't override placeholder
+        super().paintEvent(event)
+
+        # Only draw the placeholder if there is placeholder text and no user input
+        if self.placeholderText() and not self.text():
+            painter = QPainter(self)
+            painter.setPen(QColor(169, 169, 169))  # Fixed color for placeholder text
+            painter.setFont(self.font())
+
+            # Calculate the placeholder position manually
+            rect = self.rect()
+            padding = 10  # Padding to adjust the placement of the placeholder text
+            painter.drawText(rect.adjusted(padding, 0, -padding, 0), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self.placeholderText())
+            painter.end()
+            
+class ContactDialog(QDialog):
+    def __init__(self, parent=None):  # Accept parent window as argument
+        super().__init__(parent)
+        self.setWindowTitle("Contact Information")
+
+        # Layout for the contact information
+        layout = QVBoxLayout(self)
+
+        # GitHub link with clickable label
+        github_link = ClickableLabel('<b><font color="orange">GitHub: or1n</font></b>', "https://github.com/or1n")
+        github_link.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(github_link)
+
+        # Artale contact info
+        artale_label = QLabel('<b>Orin#MLQhB - Artale US</b>')
+        artale_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(artale_label)
+
+        # Discord contact info
+        discord_label = QLabel('<b>Discord: orin.abc</b>')
+        discord_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(discord_label)
+
+        # OK button to close the dialog
+        ok_button = QPushButton("Ok")
+        ok_button.clicked.connect(self.accept)
+        layout.addWidget(ok_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Set the dialog to resize dynamically based on content
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    
+    def showEvent(self, event):
+        super().showEvent(event)
+        
+        # Get parent geometry
+        parent_geometry = self.parent().geometry() if self.parent() else QRect(0, 0, 800, 600)
+        
+        # Get the dialog size
+        dialog_width = self.width()
+        dialog_height = self.height()
+
+        # Calculate position to center the dialog
+        dialog_x = parent_geometry.x() + (parent_geometry.width() - dialog_width) // 2
+        dialog_y = parent_geometry.y() + (parent_geometry.height() - dialog_height) // 2
+        
+        # Move the dialog to the calculated position
+        self.move(dialog_x, dialog_y)
+
 class ChangelogDialog(QDialog):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):  # Accept parent window as argument
+        super().__init__(parent)
         self.setWindowTitle("Changelog")
-        self.setMinimumSize(400, 200)
         
         layout = QVBoxLayout(self)
         changelog_text = QLabel("""        
-        Changelog:
-                                
-        Version 5
-        - Moved Calculate button below the AH prices section.
-        - Added a border around Rate, Desired Profit, AH Prices, and Calculate button for visual clarity.
-                                        
-        Version 4
-        - Added changelog button and information.
         
-        Version 3:
+        2024.11.14
+        - Enhanced UI layout with neatly aligned result headers and item information.
+        - Dynamically sized columns with custom scaling in `update_scale()`.
+        - Improved `calculate()` to display profit results in bold, with strikethrough for negative profits.
+        - Updated styling for button colors and text to better match theme settings.
+        - Modified result display to bold and strikethrough selectively for negative profits.
+        - Reorganized controls for streamlined 'Calculate' section layout and positioning of the changelog button.
+                                
+        2024.11.13                       
+        - Added changelog button and information.
         - Added a header with creator information (GitHub, Discord, etc.).
         
-        Version 2:
+        2024.11.12
         - Introduced theme and scale sliders for better customization.
         - Added font choice option for improved user experience.
         
-        Version 1:
+        2024.11.11
         - Created initial script with basic item calculation functionality.
         """)
         layout.addWidget(changelog_text)
@@ -154,10 +282,264 @@ class ChangelogDialog(QDialog):
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         layout.addWidget(button_box)
         button_box.accepted.connect(self.accept)
+        
+    def showEvent(self, event):
+        super().showEvent(event)
+        
+        # Get parent geometry
+        parent_geometry = self.parent().geometry() if self.parent() else QRect(0, 0, 800, 600)
+        
+        # Get the dialog size
+        dialog_width = self.width()
+        dialog_height = self.height()
+
+        # Calculate position to center the dialog
+        dialog_x = parent_geometry.x() + (parent_geometry.width() - dialog_width) // 2
+        dialog_y = parent_geometry.y() + (parent_geometry.height() - dialog_height) // 2
+        
+        # Move the dialog to the calculated position
+        self.move(dialog_x, dialog_y)
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Settings")
+        
+        # Initialize the color palette
+        self.color_palette = DarkLightPalette()  # Create and assign DarkLightPalette instance here
+        
+        # "Ok" button
+        self.ok_button = QPushButton("Ok")
+        self.ok_button.clicked.connect(self.on_ok_button_clicked)
+        
+        # Initialize UI components and layout
+        self.init_ui()
+
+    def init_ui(self):
+        """Set up the user interface elements and layout."""
+        # Standard fixed font for "Theme" and "Scale" labels
+        fixed_font = QFont()
+        fixed_font.setPointSize(12)  # Fixed size
+        fixed_font.setBold(True)  # Make text bold
+
+        # Main layout of the dialog
+        layout = QVBoxLayout(self)  # Set the main layout for SettingsDialog
+
+        # Frame for organizing settings components
+        settings_frame = QFrame()
+        settings_frame.setFrameShape(QFrame.Shape.StyledPanel)  # Apply styled panel look
+        settings_layout = QVBoxLayout(settings_frame)  # Vertical layout for settings_frame components
+
+        # Initialize widgets
+        self.theme_slider = QSlider(Qt.Orientation.Horizontal)
+        self.scale_slider = QSlider(Qt.Orientation.Horizontal)
+        self.font_combo = QFontComboBox()
+        self.theme_label = QLabel("Theme")
+        self.scale_label = QLabel("Scale")
+
+        # Theme Layout Section (vertical layout for theme setting)
+        self.theme_layout = QVBoxLayout()
+        self.theme_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.theme_layout.addWidget(self.theme_label)  # Fixed label above slider
+        self.theme_label.setFont(fixed_font)  # Apply fixed font
+
+        # Theme slider setup
+        self.theme_slider.setMinimum(0)
+        self.theme_slider.setMaximum(100)
+        self.theme_slider.setFixedWidth(185)
+        self.theme_slider.setFixedHeight(30)  # Set the height to match the icon size
+        self.theme_slider.setValue(
+            QApplication.instance().property("theme_value")
+            if QApplication.instance().property("theme_value") is not None
+            else (100 if darkdetect.isDark() else 0)
+        )
+        self.theme_slider.valueChanged.connect(self.update_theme)
+
+        # Lightbulb and sunglasses icons with fixed size
+        lightbulb_icon = QLabel("💡")
+        lightbulb_icon.setStyleSheet("font-size: 20px;")  # Explicitly set font size
+        sunglasses_icon = QLabel("🕶️")
+        sunglasses_icon.setStyleSheet("font-size: 20px;")  # Explicitly set font size
+
+        # Layout for theme slider with icons
+        theme_slider_layout = QHBoxLayout()
+        theme_slider_layout.addWidget(lightbulb_icon, alignment=Qt.AlignmentFlag.AlignLeft)
+        theme_slider_layout.addWidget(self.theme_slider)
+        theme_slider_layout.addWidget(sunglasses_icon, alignment=Qt.AlignmentFlag.AlignRight)
+        self.theme_layout.addLayout(theme_slider_layout)
+
+        # Scale Layout Section (vertical layout for scale setting)
+        self.scale_layout = QVBoxLayout()
+        self.scale_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.scale_layout.addWidget(self.scale_label)  # Fixed label above slider
+        self.scale_label.setFont(fixed_font)  # Apply fixed font
+
+        # Scale slider setup
+        self.scale_slider.setMinimum(60)
+        self.scale_slider.setMaximum(200)
+        self.scale_slider.setFixedWidth(185)
+        self.scale_slider.setFixedHeight(30)  # Set the height to match the icon size
+        self.scale_slider.setValue(
+            QApplication.instance().property("scale_value") or 100
+        )
+        self.scale_slider.valueChanged.connect(self.update_scale)
+
+        # Small and big icons with fixed size
+        small_icon = QLabel("•")
+        small_icon.setStyleSheet("font-size: 20px;")  # Explicitly set font size
+        big_icon = QLabel("⬤")
+        big_icon.setStyleSheet("font-size: 20px;")  # Explicitly set font size
+
+        # Layout for scale slider with icons
+        scale_slider_layout = QHBoxLayout()
+        scale_slider_layout.addWidget(small_icon, alignment=Qt.AlignmentFlag.AlignLeft)
+        scale_slider_layout.addWidget(self.scale_slider)
+        scale_slider_layout.addWidget(big_icon, alignment=Qt.AlignmentFlag.AlignRight)
+        self.scale_layout.addLayout(scale_slider_layout)
+
+        # Font Layout Section (vertical layout for font setting)
+        font_widget = QWidget()
+        font_layout = QVBoxLayout(font_widget)
+
+        self.font_combo = QFontComboBox()
+
+        # Set saved font as the initial font selection if available
+        saved_font = QApplication.instance().property("font_family")
+        if saved_font:
+            self.font_combo.setCurrentFont(QFont(saved_font))
+        self.font_combo.currentFontChanged.connect(self.update_font)
+        font_layout.addWidget(self.font_combo, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        # Add theme, scale, and font layouts directly to the main layout
+        settings_layout.addLayout(self.theme_layout)
+        settings_layout.addLayout(self.scale_layout)
+        settings_layout.addWidget(font_widget)
+
+        # Add the settings frame to the main dialog layout
+        layout.addWidget(settings_frame)
+
+        # Initial application of the theme and scale based on slider values
+        self.update_theme(self.theme_slider.value())  # Set initial theme
+        self.update_scale(self.scale_slider.value())  # Set initial scale
+
+        # Dialog close button
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        button_box.accepted.connect(self.save_and_close)  # Connect Ok button to save_and_close
+        button_box.rejected.connect(self.reject)  # Connect Cancel button to reject
+
+        # Disable resizing of dialog by setting a fixed size
+        self.setFixedSize(300, 300)  # Set a fixed size for the dialog
+
+    def closeEvent(self, event):
+        """
+        Override the close event to trigger the same action as the Ok button.
+        """
+        self.on_ok_button_clicked()  # Call the same method as the Ok button
+        event.accept()  # Accept the close event, so the dialog is closed
+
+    def on_ok_button_clicked(self):
+        """
+        This is the function executed when the 'Ok' button is clicked.
+        """
+        # Your logic here for when the 'Ok' button is pressed
+        print("Ok button clicked, closing dialog and applying settings.")
+        self.accept()  # Close the dialog and apply settings
+        
+    def apply_settings(self):
+        """Apply settings and then close the dialog without showing it."""
+        # Save the settings to QApplication properties
+        QApplication.instance().setProperty("theme_value", self.theme_slider.value())
+        QApplication.instance().setProperty("scale_value", self.scale_slider.value())
+        QApplication.instance().setProperty("font_family", self.font_combo.currentFont().family())
+        self.accept()  # Close the dialog
+
+    def update_font(self, font):
+        font_family = font.family()
+        QApplication.instance().setProperty("font_family", font_family)
+        self.font_combo.setCurrentFont(font)  # Update the font in the combo box
+
+    def update_theme(self, value):
+        factor = value / 100  # Scale the theme slider's value (0 to 100) to a factor between 0.0 and 1.0
+
+        current = {}
+
+        for key in self.color_palette.light:  # Accesses self.color_palette in a method where 'self' is defined
+            light_color = QColor(self.color_palette.light[key])
+            dark_color = QColor(self.color_palette.dark[key])
+
+            r = int(light_color.red() * (1 - factor) + dark_color.red() * factor)
+            g = int(light_color.green() * (1 - factor) + dark_color.green() * factor)
+            b = int(light_color.blue() * (1 - factor) + dark_color.blue() * factor)
+
+            current[key] = QColor(r, g, b)
+            
+        # Set colors on the palette
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, current['window'])
+        palette.setColor(QPalette.ColorRole.WindowText, current['text'])
+        palette.setColor(QPalette.ColorRole.Button, current['button'])
+        palette.setColor(QPalette.ColorRole.Base, current['input'])
+        palette.setColor(QPalette.ColorRole.Text, current['text'])
+
+        QApplication.instance().setPalette(palette)
+        self.setPalette(palette)  # Apply palette directly to the dialog
+
+    def update_input_palettes(self):
+        # Get the current palette from the theme slider or settings
+        palette = QApplication.instance().palette()  # The global app palette
+        text_color = palette.color(QPalette.ColorRole.Text)  # Get the current text color (theme-based)
+
+        # Set the text color for all inputs (including placeholders)
+        self.rate_input.setPalette(palette)
+        self.profit_input.setPalette(palette)
+    
+        for price_input in self.price_inputs.values():
+            price_input.setPalette(palette)
+        
+    def update_scale(self, value):
+        """Adjust the font size and resize the dialog based on the scale slider value."""
+        self.scale_factor = value / 100.0
+
+        # Update the font size for the whole application
+        font = QApplication.font()
+        font.setPointSize(int(10 * self.scale_factor))
+        QApplication.setFont(font)
+
+        # Resize the dialog window based on the new scale factor (convert to integers)
+        new_width = int(self.width() * self.scale_factor)
+        new_height = int(self.height() * self.scale_factor)
+        self.resize(new_width, new_height)
+
+    def save_and_close(self):
+        """Save settings and close the dialog."""
+        QApplication.instance().setProperty("theme_value", self.theme_slider.value())
+        QApplication.instance().setProperty("scale_value", self.scale_slider.value())
+        QApplication.instance().setProperty("font_family", self.font_combo.currentFont().family())
+
+        # Notify main window about scale change (if needed)
+        if self.parent():
+            self.parent().update_main_window_scale(self.scale_slider.value())
+
+        self.accept()  # Close the dialog
+
+    def showEvent(self, event):
+        """Override showEvent to center the dialog on the parent."""
+        super().showEvent(event)
+        
+        parent_geometry = self.parent().geometry() if self.parent() else QRect(0, 0, 800, 600)
+        dialog_width = self.width()
+        dialog_height = self.height()
+        dialog_x = parent_geometry.x() + (parent_geometry.width() - dialog_width) // 2
+        dialog_y = parent_geometry.y() + (parent_geometry.height() - dialog_height) // 2
+        self.move(dialog_x, dialog_y)
 
 class MerchantCalculator(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        # Run the settings dialog invisibly on startup
+        self.run_settings_dialog()
+
         self.items = [
             Item("Defense Charm", 450, 11),
             Item("VIP Teleport Rock", 400, 11),
@@ -170,13 +552,48 @@ class MerchantCalculator(QMainWindow):
             Item("Blue Book Bag", 250),
             Item("Pet", 1600)
         ]
-        self.palette = DarkLightPalette()
         self.scale_factor = 1.0
         self.init_ui()
+
+    def update_results(self, new_results):
+        """This function will be called to update the results section and resize the window."""
+    
+        # Clear existing results
+        for i in reversed(range(self.results_layout.count())):
+            widget = self.results_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Add new results to the results layout
+        for result in new_results:
+            result_label = QLabel(result)
+            self.results_layout.addWidget(result_label)
+
+        # Trigger the window to adjust size based on the updated results
+        self.adjustSize()
+
+    def run_settings_dialog(self):
+        """Run the settings dialog invisibly, apply settings, and close it."""
+        settings_dialog = SettingsDialog(self)
+        settings_dialog.hide()  # Hide the dialog (it won't be shown to the user)
+        settings_dialog.apply_settings()  # Apply settings without showing the dialog
         
     def init_ui(self):
-        self.setWindowTitle('Artale WC Merch Calc v5 - made by Orin#MLQhB')
-        self.setMinimumSize(400, 400)
+        # Center the window on the screen
+        screen = QApplication.primaryScreen()  # Get the primary screen
+        screen_geometry = screen.availableGeometry()  # Get available geometry of the screen
+        screen_center = screen_geometry.center()  # Get the center point of the screen
+        window_geometry = self.frameGeometry()  # Get the geometry of the window
+        window_geometry.moveCenter(screen_center)  # Move the window center to the screen center
+        self.move(window_geometry.topLeft())  # Move the top-left corner of the window to the calculated position
+    
+        # Set the size policy for MerchantCalculator to be dynamically resizable
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        
+        file_path = __file__  # This refers to the current script file
+        version = get_version_from_file_timestamp(file_path)
+
+        self.setWindowTitle(f'Artale WC Merch Calc {version} - made by Orin#MLQhB')
         
         # Main widget and layout
         main_widget = QWidget()
@@ -186,26 +603,25 @@ class MerchantCalculator(QMainWindow):
         # Header with links
         header_widget = QWidget()
         header_layout = QVBoxLayout(header_widget)
+        
+        avatar_image = QPixmap("avatar.png") #Load the avatar image
+        avatar_label = QLabel()
+        avatar_label.setPixmap(avatar_image)
+        avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        avatar_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # Make avatar label expand horizontally
+        header_layout.addWidget(avatar_label)
 
         # Title with version (bold and bigger)
-        title_label = QLabel('<b><font size="5">Artale WC Merch Calc v5</font></b>')
+        title_label = QLabel(f'<b><font size="4">Artale WC Merch Calc</font> <font size="2">{version}</font></b>')
+        title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # Allow title to expand horizontally
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(title_label)
 
-        # "made by or1n" with orange color and bold
-        github_link = ClickableLabel('<b><font color="orange">made by or1n</font></b>', "https://github.com/or1n")
+        # "Orin#MLQhB" with orange color and bold
+        github_link = ClickableLabel('<b>Orin#MLQhB</b>', "https://github.com/or1n")
         github_link.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        github_link.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # Allow link to expand horizontally
         header_layout.addWidget(github_link)
-        
-        # Orin#MLQhB - Artale US (bold)
-        artale_label = QLabel('<b>Orin#MLQhB - Artale US</b>')
-        artale_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header_layout.addWidget(artale_label)
-        
-        # orin.abc (bold)
-        discord_label = QLabel('<b>orin.abc</b>')
-        discord_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header_layout.addWidget(discord_label)
         
         layout.addWidget(header_widget)
 
@@ -213,24 +629,38 @@ class MerchantCalculator(QMainWindow):
         controls_frame = QFrame()
         controls_frame.setFrameShape(QFrame.Shape.StyledPanel)
         controls_layout = QVBoxLayout(controls_frame)
-        
-        # Rate input
+
+        # Section Header for Controls
+        controls_header = Boldy("Controls")
+        controls_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        controls_layout.addWidget(controls_header)
+
+        # Rate
         rate_widget = QWidget()
         rate_layout = QHBoxLayout(rate_widget)
         rate_layout.addWidget(QLabel("Rate 1:"))
-        self.rate_input = QLineEdit()
+
+        self.rate_input = CustomLineEdit()
         self.rate_input.setPlaceholderText("2400")
+
         rate_layout.addWidget(self.rate_input)
-        controls_layout.addWidget(rate_widget)
         
-        # Profit threshold input
+        # Profit
         profit_widget = QWidget()
         profit_layout = QHBoxLayout(profit_widget)
         profit_layout.addWidget(QLabel("Desired Profit %"))
-        self.profit_input = QLineEdit()
+        self.profit_input = CustomLineEdit()
         self.profit_input.setPlaceholderText("10")
+
         profit_layout.addWidget(self.profit_input)
-        controls_layout.addWidget(profit_widget)
+
+        # Combine both rate and profit widgets into one row
+        combined_layout = QHBoxLayout()  # One layout for both
+        combined_layout.addWidget(rate_widget)
+        combined_layout.addWidget(profit_widget)
+
+        # Add the combined layout to the controls layout
+        controls_layout.addLayout(combined_layout)
 
          # Input grid for AH prices
         input_widget = QWidget()
@@ -247,8 +677,10 @@ class MerchantCalculator(QMainWindow):
             label = QLabel(item.name)
             item_layout.addWidget(label)
             
-            price_input = QLineEdit()
+            # Price input (for each item)
+            price_input = CustomLineEdit()
             price_input.setPlaceholderText("AH Price")
+
             self.price_inputs[item.name] = price_input
             item_layout.addWidget(price_input)
             
@@ -257,114 +689,124 @@ class MerchantCalculator(QMainWindow):
         controls_layout.addWidget(input_widget)      
 
         # Calculate button
-        self.calc_button = QPushButton("Calculate")
+        self.calc_button = ThemedButton("Calculate")
         self.calc_button.clicked.connect(self.calculate)
         controls_layout.addWidget(self.calc_button)
         
-        # Results area
-        self.results_widget = QScrollArea()
-        self.results_widget.setWidgetResizable(True)
+        layout.addWidget(controls_frame)
+        
+        #Results area
+        results_frame = QFrame()
+        results_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        results_layout = QVBoxLayout(results_frame)
+
+        # Section Header for Results
+        results_header = Boldy("Results")
+        results_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        results_layout.addWidget(results_header)
+        
+        # Directly use a QWidget for results content (no scroll area)
         self.results_content = QWidget()
         self.results_layout = QVBoxLayout(self.results_content)
-        self.results_widget.setWidget(self.results_content)
-        controls_layout.addWidget(self.results_widget)
+        results_layout.addWidget(self.results_content)
 
-        layout.addWidget(controls_frame)
+        # Add results frame to the main layout
+        layout.addWidget(results_frame)
 
-        # Settings area
-        settings_frame = QFrame()
-        settings_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        settings_layout = QVBoxLayout(settings_frame)
+        # Horizontal layout for Contact, Settings & Changelog button
+        button_layout = QHBoxLayout()
 
-        # Theme, Scale, and Font controls in one row
-        sliders_font_layout = QHBoxLayout()
-        self.theme_slider = QSlider(Qt.Orientation.Horizontal)
-        self.theme_slider.setMinimum(0)
-        self.theme_slider.setMaximum(100)
-        self.theme_slider.setValue(100 if darkdetect.isDark() else 100)
-        self.theme_slider.valueChanged.connect(self.update_theme)
+        "CONTACT BUTTON"
+        # Create the Contact button with bold text
+        contact_button = BoldButton("Contact")
+        
+        # Connect the button to the contact function
+        contact_button.clicked.connect(self.show_contact)
+        button_layout.addWidget(contact_button, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        self.scale_slider = QSlider(Qt.Orientation.Horizontal)
-        self.scale_slider.setMinimum(50)
-        self.scale_slider.setMaximum(200)
-        self.scale_slider.setValue(100)  # Default font scale
-        self.scale_slider.valueChanged.connect(self.update_scale)
+        "SETTINGS BUTTON"
+        # Settings button with bold and orange text, using QFont and QPalette
+        settings_button = QPushButton("Settings")
 
-        sliders_font_layout.addWidget(QLabel("Theme"))
-        sliders_font_layout.addWidget(self.theme_slider)
-        sliders_font_layout.addWidget(QLabel("Scale"))
-        sliders_font_layout.addWidget(self.scale_slider)
+        # Make the text bold
+        font = settings_button.font()
+        font.setBold(True)
+        settings_button.setFont(font)
 
-        # Font selector
-        font_widget = QWidget()
-        font_layout = QHBoxLayout(font_widget)
-        self.font_combo = QFontComboBox()
-        self.font_combo.currentFontChanged.connect(self.update_font)
-        font_layout.addWidget(self.font_combo, alignment=Qt.AlignmentFlag.AlignLeft)
+        # Set the text color to orange (manually set the color)
+        palette = settings_button.palette()
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor("#1e1e1e")) 
+        settings_button.setPalette(palette)
 
-        sliders_font_layout.addWidget(self.font_combo)
+        # Connect the button to the settings function
+        settings_button.clicked.connect(self.show_settings)
+        button_layout.addWidget(settings_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        settings_layout.addLayout(sliders_font_layout)
-        settings_layout.addWidget(font_widget)
-
-        layout.addWidget(settings_frame)
-
-        # Changelog button
+        "CHANGELOG BUTTON"
+        # Changelog button with bold and orange text, using QFont and QPalette
         changelog_button = QPushButton("Changelog")
+
+        # Make the text bold
+        font = changelog_button.font()
+        font.setBold(True)
+        changelog_button.setFont(font)
+
+        # Set the text color to orange (manually set the color)
+        palette = changelog_button.palette()
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor("#1e1e1e"))  # Set color to dark gray or another hex
+        changelog_button.setPalette(palette)
+
+        # Connect the button to the changelog function
         changelog_button.clicked.connect(self.show_changelog)
-        layout.addWidget(changelog_button, alignment=Qt.AlignmentFlag.AlignRight)
+        button_layout.addWidget(changelog_button, alignment=Qt.AlignmentFlag.AlignRight)
 
-        # Initial theme
-        self.update_theme(self.theme_slider.value())
+        # Add the button layout to the main layout
+        layout.addLayout(button_layout)
 
-    def update_scale(self, value):
-        self.scale_factor = value / 100.0
-        font = QApplication.font()
-        font.setPointSize(int(10 * self.scale_factor))
-        QApplication.setFont(font)
-        
-    def update_theme(self, value):
-        factor = value / 100
-        current = {}
-        
-        for key in self.palette.light:
-            light_color = QColor(self.palette.light[key])
-            dark_color = QColor(self.palette.dark[key])
-            
-            r = int(light_color.red() * (1 - factor) + dark_color.red() * factor)
-            g = int(light_color.green() * (1 - factor) + dark_color.green() * factor)
-            b = int(light_color.blue() * (1 - factor) + dark_color.blue() * factor)
-            
-            current[key] = QColor(r, g, b)
-        
-        palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, current['window'])
-        palette.setColor(QPalette.ColorRole.WindowText, current['text'])
-        palette.setColor(QPalette.ColorRole.Button, current['button'])
-        palette.setColor(QPalette.ColorRole.Base, current['input'])
-        palette.setColor(QPalette.ColorRole.Text, current['text'])
-        
-        self.setPalette(palette)
-        QApplication.instance().setPalette(palette)
-        
-    def update_font(self, font):
-        font.setPointSize(int(10 * self.scale_factor))
-        QApplication.instance().setFont(font)
+        # Ensure the results section expands/shrinks as needed
+        layout.setStretch(0, 0)  # Header (fixed)
+        layout.setStretch(1, 0)  # Controls (fixed)
+        layout.setStretch(2, 1)  # Results (expandable)
+        layout.setStretch(3, 0)  # Button layout (fixed)
     
+        # Resize the window to fit all content
+        self.adjustSize()
+
+        # Set a minimum size (optional)
+        min_width = self.minimumWidth()
+        min_height = self.minimumHeight()
+        self.setMinimumSize(min_width, min_height)
+
+    def update_main_window_scale(self, scale_value):
+        """Update main window scale dynamically based on scale slider."""
+        scale_factor = scale_value / 100.0
+    
+        # Update font size
+        font = QApplication.font()
+        font.setPointSize(int(10 * scale_factor))
+        QApplication.setFont(font)
+
+        # Update other UI elements (if necessary)
+        self.resize(int(self.width() * self.scale_factor), int(self.height() * self.scale_factor))
+        self.update()  # Refresh the window
+
     def calculate(self):
-        for i in reversed(range(self.results_layout.count())): 
+        # Clear any existing result widgets
+        for i in reversed(range(self.results_layout.count())):
             self.results_layout.itemAt(i).widget().setParent(None)
         
+        # Handle rate and profit input
         try:
-            wc_rate = int(self.rate_input.text() or "2400")
-            desired_profit = float(self.profit_input.text() or "10")
+            wc_rate = int(self.rate_input.text().replace(",", "") or "2400")  # Remove commas if present
+            desired_profit = float(self.profit_input.text().replace(",", "") or "10")  # Remove commas if present
         except ValueError:
             return
         
         results = []
         for item in self.items:
             try:
-                ah_price = int(self.price_inputs[item.name].text() or "0")
+                ah_price_text = self.price_inputs[item.name].text().replace(",", "")  # Remove commas from input
+                ah_price = int(ah_price_text or "0")
                 if ah_price > 0:
                     result = ItemResult(item, ah_price, wc_rate)
                     results.append(result)
@@ -372,19 +814,26 @@ class MerchantCalculator(QMainWindow):
                 continue
         
         results.sort(key=lambda x: x.profit_percent, reverse=True)
+
+        # Update the font family
+        font_family = QApplication.instance().property("font_family") or "Default Font"
         
         headers = ["Item", "AH Price (-1💰)", "AH Fee", "Net", "Profit %", "Profit Mesos", "Max Rate"]
         header_widget = QWidget()
         header_layout = QHBoxLayout(header_widget)
         for header in headers:
             label = QLabel(header)
-            label.setFont(QFont(self.font_combo.currentFont().family(), weight=QFont.Weight.Bold))
+            label.setFont(QFont(font_family, weight=QFont.Weight.Bold))  # Apply saved font and bold weight
             header_layout.addWidget(label)
         self.results_layout.addWidget(header_widget)
         
+        # Create result rows
         for result in results:
             row_widget = QWidget()
             row_layout = QHBoxLayout(row_widget)
+
+            # Set a fixed width for each column except the "Item" column (which can stretch)
+            column_width = 120  # Adjust as needed to fit content
             
             # Prepare profit mesos text with 💰 only for positive profit
             profit_mesos_text = (
@@ -401,26 +850,66 @@ class MerchantCalculator(QMainWindow):
                 profit_mesos_text,
                 f"1:{result.calculate_max_rate(desired_profit):,}"
             ]
-            
-            # Add ❌ for items with negative profit
-            if result.profit_percent < 0:
-                data[0] = f"❌ {data[0]}"
-            
+            # Add ❌ for items with negative profit, but only to the item name (first column)
             for i, text in enumerate(data):
-                label = QLabel(text)
+                if result.profit_percent < 0 and i == 0:  # Only modify the first column (item name)
+                    data[i] = f"❌ {data[i]}"  # Add "❌" to the beginning of the item name
+
+                label = QLabel(data[i])  # Use the (possibly modified) text
+                label.setFont(QFont(font_family))  # Apply saved font
+
+                # Create a QFont object and adjust font size dynamically
+                font = label.font()  # Get current font
+
+                # Set fixed widths for all columns except the name column
+                if i == 0:  # The "Item" column can stretch
+                    label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                else:  # Other columns should have fixed width
+                    label.setFixedWidth(column_width)
+
+                # Set bold text and/or strikethrough if needed (e.g., for negative profit)
                 if result.profit_percent < 0:
-                    if i != 6:  # Don't strikethrough max rate
-                        label.setStyleSheet("text-decoration: line-through;")
-                    else:  # Make max rate bold for negative profit items
-                        label.setStyleSheet("font-weight: bold;")
+                    if i != 6:  # Skip strikethrough for the max rate (index 6 in your case)
+                        font.setBold(False)  # Make the font non-bold for negative profits
+                        font.setStrikeOut(True)  # Apply strikethrough
+                    else:  # Make max rate bold without strikethrough
+                        font.setBold(True)
+                else:
+                    font.setBold(False)  # Non-bold text for positive profits
+                    font.setStrikeOut(False)  # Remove strikethrough for non-negative profits
+
+                # Apply the adjusted font to the label
+                label.setFont(font)
+
+                # Apply sizePolicy to allow horizontal stretching
+                label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+                # Add the label to the layout
                 row_layout.addWidget(label)
-            
+
+            # After processing all labels, add the row_widget to the results_layout
             self.results_layout.addWidget(row_widget)
 
+        # Automatically resize the whole window to fit the content
+        self.adjustSize()
+    
+        # Ensure the window does not shrink too small
+        min_width = self.minimumWidth()  # Get the current minimum width
+        min_height = self.minimumHeight()  # Get the current minimum height
+        self.setMinimumSize(min_width, min_height)  # Ensure the window size is not smaller than the minimum
+
+    def show_contact(self):
+        contact_dialog = ContactDialog(self) # Pass self as the parent
+        contact_dialog.exec() # Show the dialog modally
+
+    def show_settings(self):
+        settings_dialog = SettingsDialog(self)  # Pass self as the parent
+        settings_dialog.exec()  # Show the dialog modally
+
     def show_changelog(self):
-        changelog_dialog = ChangelogDialog()
-        changelog_dialog.exec()
-        
+        changelog_dialog = ChangelogDialog(self)  # Pass self as parent
+        changelog_dialog.exec() # Show the dialog modally
+
 def main():
     app = QApplication(sys.argv)
     calculator = MerchantCalculator()
