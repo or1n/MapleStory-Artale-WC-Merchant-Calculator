@@ -58,8 +58,8 @@ This script provides the following features:
 
 The following features are planned for future updates to the Artale-WC-Merch-Calc:
 
-- [ ] **Fix summary scaling and column width**
-  Make it so the summary is always neat vertically and horizontally
+- [ ] **Fix summary scaling and column width**  
+  Make it so the summary is always neatly formed vertically and horizontally
 
 - [ ] **.exe false anti virus??**  
   Somehow when downloading it says the .exe is a virus? Try to fix this within the python code
