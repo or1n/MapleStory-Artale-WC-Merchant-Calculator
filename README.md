@@ -26,6 +26,8 @@
 
 ## **Features**
 
+![artale-wc-calc](https://github.com/user-attachments/assets/1f535d2b-48fe-469b-a8fc-e461023346fb)
+
 This script provides the following features:
 
 ### **1. Dynamic User Interface (UI) Layout**
