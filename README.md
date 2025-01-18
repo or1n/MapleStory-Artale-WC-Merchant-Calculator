@@ -26,7 +26,7 @@
 
 ## **Features**
 
-![artale-wc-calc](https://github.com/user-attachments/assets/1f535d2b-48fe-469b-a8fc-e461023346fb)
+![artale-wc-calc2](https://github.com/user-attachments/assets/f242ff85-20e6-4e49-a1b7-66aba051aead)
 
 This script provides the following features:
 
